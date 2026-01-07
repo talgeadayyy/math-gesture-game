@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chơi Game - Math Gesture</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Bubblegum+Sans&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ===== RESET ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Quicksand', 'Baloo 2', sans-serif;
+            background: linear-gradient(135deg, #FFD93D 0%, #6BCF7F 50%, #4D96FF 100%);
+            min-height: 100vh;
+            max-height: 100vh; /* ✅ THÊM: Giới hạn chiều cao */
+            overflow: hidden; /* ✅ SỬA: hidden thay vì auto */
+            position: relative;
+        }
+
+        /* ===== BACKGROUND CLOUDS ===== */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50px;
+            left: -50px;
+            right: -50px;
+            bottom: -50px;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(255,255,255,0.4) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(255,255,255,0.35) 0%, transparent 50%),
+                radial-gradient(circle at 90% 70%, rgba(255,255,255,0.3) 0%, transparent 50%);
+            animation: floatClouds 30s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes floatClouds {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(20px, -20px); }
+        }
+
+        /* ===== HEADER ===== */
+        .game-header {
+            background: linear-gradient(135deg, #FF6B9D 0%, #FEC163 100%);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 8px 25px rgba(255,107,157,0.4);
+            border-bottom-left-radius: 30px;
+            border-bottom-right-radius: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header-left, .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-exit {
+            background: linear-gradient(135deg, #FF6B6B, #FFE66D);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 700;
+            font-family: 'Fredoka', sans-serif;
+            box-shadow: 0 6px 20px rgba(255,107,107,0.4);
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border: 4px solid rgba(255,255,255,0.5);
+        }
+
+        .btn-exit:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 10px 30px rgba(255,107,107,0.6);
+        }
+
+        .btn-exit:active {
+            transform: translateY(-2px) scale(0.98);
+        }
+
+        .level-badge {
+            background: linear-gradient(135deg, #A8E6CF, #56CCF2);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 18px;
+            font-family: 'Bubblegum Sans', sans-serif;
+            box-shadow: 0 6px 20px rgba(86,204,242,0.4);
+            border: 4px solid rgba(255,255,255,0.6);
+        }
+
+        .timer {
+            font-size: 24px;
+            font-weight: 800;
+            font-family: 'Bubblegum Sans', sans-serif;
+            color: white;
+            background: linear-gradient(135deg, #A8E6CF, #FFD93D);
+            padding: 10px 20px;
+            border-radius: 25px;
+            box-shadow: 0 6px 20px rgba(255,217,61,0.4);
+            border: 4px solid rgba(255,255,255,0.5);
+        }
+
+        /* ===== GAME CONTAINER ===== */
+        .game-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            padding: 25px;
+            height: calc(100vh - 90px); /* ✅ SỬA: Dùng height thay vì min-height */
+            overflow: hidden; /* ✅ THÊM: Ngăn tràn */
+            position: relative;
+            z-index: 5;
+        }
+
+        /* ===== CAMERA SECTION ===== */
+        .camera-section {
+            position: relative;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 40px;
+            overflow: hidden;
+            box-shadow: 
+                0 15px 40px rgba(102,126,234,0.4),
+                inset 0 -5px 20px rgba(0,0,0,0.1);
+            border: 8px solid rgba(255,255,255,0.9);
+            height: 100%; /* ✅ THÊM: Chiếm đầy đủ chiều cao */
+            max-height: 100%; /* ✅ THÊM: Không vượt quá */
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        #canvasElement {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ===== QUESTION SECTION ===== */
+        .question-section {
+            background: linear-gradient(135deg, #FFE5F1, #FFF4E0);
+            border-radius: 40px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 
+                0 15px 40px rgba(255,107,157,0.3),
+                inset 0 -5px 20px rgba(255,255,255,0.8);
+            border: 8px solid rgba(255,255,255,0.9);
+            height: 100%; /* ✅ THÊM: Chiếm đầy đủ chiều cao */
+            max-height: 100%; /* ✅ THÊM: Không vượt quá */
+            overflow-y: auto; /* ✅ THÊM: Scroll nếu cần */
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: inset 0 3px 8px rgba(0,0,0,0.1);
+            border: 3px solid rgba(255,255,255,0.8);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FF6B9D, #FEC163, #A8E6CF);
+            transition: width 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            width: 0%;
+            box-shadow: 0 0 15px rgba(255,107,157,0.6);
+        }
+
+        .question-counter {
+            text-align: center;
+            font-size: 22px;
+            color: #FF6B9D;
+            font-weight: 700;
+            font-family: 'Bubblegum Sans', sans-serif;
+            text-shadow: 2px 2px 0 rgba(255,255,255,0.8);
+        }
+
+        .question-text {
+            text-align: center;
+            font-size: 64px;
+            font-weight: 800;
+            font-family: 'Bubblegum Sans', sans-serif;
+            color: #FF6B9D;
+            padding: 40px;
+            background: linear-gradient(135deg, #FFFFFF, #FFF4E0);
+            border-radius: 35px;
+            min-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 
+                0 10px 30px rgba(255,107,157,0.3),
+                inset 0 -3px 15px rgba(255,255,255,0.8);
+            border: 6px solid rgba(255,255,255,0.9);
+            text-shadow: 3px 3px 0 rgba(255,255,255,0.5);
+        }
+
+        .finger-count-display {
+            text-align: center;
+            padding: 25px;
+            background: linear-gradient(135deg, #A8E6CF, #56CCF2);
+            border-radius: 35px;
+            box-shadow: 
+                0 10px 30px rgba(86,204,242,0.4),
+                inset 0 -3px 15px rgba(255,255,255,0.5);
+            border: 6px solid rgba(255,255,255,0.9);
+        }
+
+        .finger-label {
+            display: block;
+            font-size: 20px;
+            color: white;
+            font-weight: 700;
+            font-family: 'Fredoka', sans-serif;
+            margin-bottom: 12px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .finger-count {
+            font-size: 90px;
+            font-weight: 800;
+            font-family: 'Bubblegum Sans', sans-serif;
+            color: white;
+            text-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+            animation: fingerPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes fingerPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .score-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .score-item {
+            padding: 20px;
+            border-radius: 30px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border: 5px solid rgba(255,255,255,0.9);
+        }
+
+        .score-item.correct {
+            background: linear-gradient(135deg, #A8E6CF, #DCEDC8);
+        }
+
+        .score-item.wrong {
+            background: linear-gradient(135deg, #FFABAB, #FFD6A5);
+        }
+
+        .score-label {
+            display: block;
+            font-size: 18px;
+            font-weight: 700;
+            font-family: 'Fredoka', sans-serif;
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        .score-value {
+            font-size: 42px;
+            font-weight: 800;
+            font-family: 'Bubblegum Sans', sans-serif;
+            color: #333;
+            text-shadow: 2px 2px 0 rgba(255,255,255,0.5);
+        }
+
+        .game-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn-control {
+            padding: 18px;
+            border: none;
+            border-radius: 30px;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Fredoka', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            background: linear-gradient(135deg, #FFD93D, #FEC163);
+            color: white;
+            box-shadow: 0 8px 25px rgba(255,217,61,0.4);
+            border: 5px solid rgba(255,255,255,0.7);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .btn-control:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 12px 35px rgba(255,217,61,0.6);
+        }
+
+        .btn-control:active {
+            transform: translateY(-2px) scale(0.98);
+        }
+
+        #btnSkip {
+            background: linear-gradient(135deg, #FF6B9D, #FEC163);
+        }
+
+        #btnHint {
+            background: linear-gradient(135deg, #A8E6CF, #56CCF2);
+        }
+
+        #finishBtn {
+            background: linear-gradient(135deg, #FFD93D, #A8E6CF);
+            grid-column: 2;
+        }
+
+        /* ===== FEEDBACK ===== */
+        .feedback-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            padding: 40px 70px;
+            border-radius: 40px;
+            font-size: 48px;
+            font-weight: 800;
+            font-family: 'Bubblegum Sans', sans-serif;
+            color: white;
+            z-index: 1000;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: none;
+            border: 8px solid rgba(255,255,255,0.8);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+        }
+
+        .feedback-message.show {
+            transform: translate(-50%, -50%) scale(1);
+            animation: feedbackBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes feedbackBounce {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); }
+            50% { transform: translate(-50%, -50%) scale(1.2) rotate(5deg); }
+            100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+        }
+
+        /* ===== MODAL ===== */
+        .result-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .result-content {
+            background: linear-gradient(135deg, #FFE5F1, #FFF4E0);
+            padding: 50px;
+            border-radius: 50px;
+            text-align: center;
+            max-width: 550px;
+            width: 90%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+            border: 10px solid rgba(255,255,255,0.9);
+            animation: modalSlideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes modalSlideIn {
+            0% {
+                transform: scale(0.5) rotate(-5deg);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        .result-title {
+            font-size: 48px;
+            font-family: 'Bubblegum Sans', sans-serif;
+            margin-bottom: 35px;
+            color: #FF6B9D;
+            text-shadow: 3px 3px 0 rgba(255,255,255,0.5);
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+
+        .stat-item {
+            padding: 25px;
+            background: linear-gradient(135deg, #A8E6CF, #56CCF2);
+            border-radius: 35px;
+            box-shadow: 0 10px 30px rgba(86,204,242,0.3);
+            border: 5px solid rgba(255,255,255,0.9);
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 56px;
+            font-weight: 800;
+            font-family: 'Bubblegum Sans', sans-serif;
+            color: white;
+            text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+        }
+
+        .stat-label {
+            font-size: 18px;
+            font-weight: 700;
+            font-family: 'Fredoka', sans-serif;
+            color: white;
+            margin-top: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .result-details {
+            margin: 25px 0;
+            font-size: 24px;
+            font-weight: 700;
+            font-family: 'Fredoka', sans-serif;
+            color: #555;
+        }
+
+        .star-rating {
+            font-size: 60px;
+            margin: 25px 0;
+            animation: starTwinkle 1.5s ease-in-out infinite;
+        }
+
+        @keyframes starTwinkle {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.15) rotate(5deg); }
+        }
+
+        .result-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 35px;
+        }
+
+        .btn-result {
+            padding: 18px 35px;
+            border: none;
+            border-radius: 30px;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Fredoka', sans-serif;
+            cursor: pointer;
+            background: linear-gradient(135deg, #FF6B9D, #FEC163);
+            color: white;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 8px 25px rgba(255,107,157,0.4);
+            border: 5px solid rgba(255,255,255,0.7);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .btn-result:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 12px 35px rgba(255,107,157,0.6);
+        }
+
+        .btn-result:active {
+            transform: translateY(-2px) scale(0.98);
+        }
+
+        .btn-result.secondary {
+            background: linear-gradient(135deg, #A8E6CF, #56CCF2);
+        }
+
+        /* ===== DECORATIVE STARS ===== */
+        @keyframes floatStar {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            body {
+                overflow-y: auto; /* ✅ Mobile cho phép scroll */
+                max-height: none;
+            }
+
+            .game-container {
+                grid-template-columns: 1fr;
+                height: auto; /* ✅ Mobile không giới hạn chiều cao */
+                overflow-y: visible;
+                padding-bottom: 50px; /* ✅ THÊM: Padding dưới cho mobile */
+            }
+
+            .camera-section, .question-section {
+                height: auto;
+                max-height: none;
+            }
+            
+            .question-text {
+                font-size: 48px;
+            }
+            
+            .finger-count {
+                font-size: 64px;
+            }
+
+            .result-content {
+                padding: 35px;
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Game Header -->
+    <div class="game-header">
+        <div class="header-left">
+            <button class="btn-exit" id="btnExit">← Thoát</button>
+            <span class="level-badge" id="levelBadge">Level 1 - 🟢 Dễ</span>
+        </div>
+        <div class="header-right">
+            <span class="timer" id="timer">⏱️ 00:00</span>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div class="game-container">
+        <!-- Camera Section -->
+        <div class="camera-section">
+            <video id="videoElement" autoplay playsinline></video>
+            <canvas id="canvasElement"></canvas>
+        </div>
+
+        <!-- Question Section -->
+        <div class="question-section">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+            <div class="question-counter" id="questionCounter">Câu 1/16</div>
+            <div class="question-text" id="questionText">2 + 3 = ?</div>
+            
+            <div class="finger-count-display">
+                <span class="finger-label">Số ngón tay:</span>
+                <span class="finger-count" id="fingerCount">0</span>
+            </div>
+
+            <div class="score-display">
+                <div class="score-item correct">
+                    <span class="score-label">✅ Đúng:</span>
+                    <span class="score-value" id="correctCount">0</span>
+                </div>
+                <div class="score-item wrong">
+                    <span class="score-label">❌ Sai:</span>
+                    <span class="score-value" id="wrongCount">0</span>
+                </div>
+            </div>
+
+            <div class="game-controls">
+                <button class="btn-control" id="btnSkip">⏭️ Bỏ qua</button>
+                <button id="finishBtn" class="btn-control">✅ Hoàn thành</button>
+                <button class="btn-control" id="btnHint">💡 Gợi ý</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Message -->
+    <div class="feedback-message" id="feedbackMessage"></div>
+
+    <!-- Modal kết quả -->
+    <div class="result-modal" id="resultModal">
+        <div class="result-content">
+            <h2 class="result-title">🎉 Hoàn Thành!</h2>
+            <div class="result-stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="finalScore">0%</span>
+                    <span class="stat-label">Điểm</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="finalTime">0s</span>
+                    <span class="stat-label">Thời gian</span>
+                </div>
+            </div>
+            <div class="result-details">
+                <p>✅ Đúng: <span id="finalCorrect">0</span></p>
+                <p>❌ Sai: <span id="finalWrong">0</span></p>
+            </div>
+            <div class="star-rating" id="starRating">⭐⭐⭐⭐⭐</div>
+            <div class="result-actions">
+                <button class="btn-result" id="btnPlayAgain">🔁 Chơi Lại</button>
+                <button class="btn-result secondary" id="btnBackToDashboard">🏠 Về Trang Chính</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script src="js/firebase.js"></script>
+
+    <!-- MediaPipe Hands -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+    <!-- Gesture Recognition -->
+    <script src="js/gesture.js"></script>
+
+    <!-- ===== LOGIC GAME - GIỮ NGUYÊN 100% ===== -->
+    <script>
+        const auth = window.auth;
+        const db = window.db;
+
+        class MathGame {
+            constructor() {
+                this.videoElement = document.getElementById('videoElement');
+                this.canvasElement = document.getElementById('canvasElement');
+                this.questionText = document.getElementById('questionText');
+                this.fingerCount = document.getElementById('fingerCount');
+                this.questionCounter = document.getElementById('questionCounter');
+                this.timer = document.getElementById('timer');
+                this.levelBadge = document.getElementById('levelBadge');
+                this.progressBar = document.getElementById('progressBar');
+                this.correctCount = document.getElementById('correctCount');
+                this.wrongCount = document.getElementById('wrongCount');
+                this.feedbackMessage = document.getElementById('feedbackMessage');
+                this.resultModal = document.getElementById('resultModal');
+                this.hasStartedGesture = false;
+                this.level = 1;
+                this.currentQuestionIndex = 0;
+                this.totalQuestions = 16;
+                this.questions = [];
+                this.correctAnswers = 0;
+                this.wrongAnswers = 0;
+                this.startTime = null;
+                this.timerInterval = null;
+                this.waitingForAnswer = true;
+                this.userId = null;
+                this.isInitialized = false;
+                this.gestureRecognition = null;
+                this.audioContext = null;
+                this.lastFingerCount = null;
+                this.fingerHoldStart = null;
+                this.fingerHoldDuration = 1500; // ✅ TĂNG từ 800ms → 1500ms (1.5s)
+                this.isExiting = false;
+            }
+
+            async init() {
+                if (this.isInitialized) return;
+                console.log('⏳ Chờ Firebase auth...');
+                auth.onAuthStateChanged(async (user) => {
+                    if (!user) {
+                        console.warn('❌ Chưa đăng nhập');
+                        alert('Vui lòng đăng nhập!');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    if (this.isInitialized) return;
+                    this.isInitialized = true;
+                    this.userId = user.uid;
+                    console.log('✅ Auth OK:', user.email);
+                    const params = new URLSearchParams(window.location.search);
+                    this.level = parseInt(params.get('level')) || 1;
+                    this.updateLevelBadge();
+                    this.generateQuestions();
+                    this.setupEventListeners();
+                    this.startGame();
+                    await this.initGestureRecognition();
+                });
+            }
+
+            async initGestureRecognition() {
+                console.log('📷 Khởi tạo camera...');
+                this.gestureRecognition = new GestureRecognition(this.videoElement, this.canvasElement, (count) => {
+                    console.log('🖐️ Số ngón tay:', count);
+                    this.onFingerCountUpdate(count);
+                });
+                const success = await this.gestureRecognition.initialize();
+                if (success) {
+                    this.gestureRecognition.start();
+                    console.log('✅ Camera sẵn sàng');
+                } else {
+                    alert('Không thể khởi tạo camera. Vui lòng cho phép truy cập camera.');
+                }
+            }
+
+            startGame() {
+                console.log('▶️ Bắt đầu game!');
+                this.startTime = Date.now();
+                this.currentQuestionIndex = 0;
+                this.correctAnswers = 0;
+                this.wrongAnswers = 0;
+                this.resetGestureState();
+                this.startTimer();
+                this.showQuestion();
+            }
+
+            resetGestureState() {
+                this.lastFingerCount = null;
+                this.fingerHoldStart = null;
+                this.waitingForAnswer = true;
+                this.hasStartedGesture = false;
+            }
+
+            showQuestion() {
+                if (this.currentQuestionIndex >= this.totalQuestions) {
+                    this.endGame();
+                    return;
+                }
+                const q = this.questions[this.currentQuestionIndex];
+                this.questionText.textContent = q.question;
+                this.questionCounter.textContent = `Câu ${this.currentQuestionIndex + 1}/${this.totalQuestions}`;
+                this.updateProgressBar();
+                this.resetGestureState();
+            }
+
+            nextQuestion() {
+                this.currentQuestionIndex++;
+                this.showQuestion();
+            }
+
+            generateQuestions() {
+                console.log(`📝 Tạo ${this.totalQuestions} câu hỏi cho Level ${this.level}...`);
+                this.questions = [];
+                const numCount = this.level + 1;
+                for (let i = 0; i < this.totalQuestions; i++) {
+                    const numbers = [];
+                    for (let j = 0; j < numCount; j++) {
+                        numbers.push(Math.floor(Math.random() * 5) + 1);
+                    }
+                    const sum = numbers.reduce((a, b) => a + b, 0);
+                    if (sum <= 10) {
+                        this.questions.push({ numbers, question: numbers.join(' + ') + ' = ?', answer: sum });
+                    } else { i--; }
+                }
+                console.log('✅ Câu hỏi:', this.questions);
+            }
+
+            onFingerCountUpdate(count) {
+                if (this.isExiting) return;
+                this.fingerCount.textContent = count;
+                if (!this.waitingForAnswer) return;
+                const now = Date.now();
+                if (!this.hasStartedGesture) {
+                    if (count === 0) return;
+                    this.hasStartedGesture = true;
+                    this.lastFingerCount = count;
+                    this.fingerHoldStart = now;
+                    return;
+                }
+                if (this.lastFingerCount !== count) {
+                    this.lastFingerCount = count;
+                    this.fingerHoldStart = now;
+                    return;
+                }
+                if (now - this.fingerHoldStart >= this.fingerHoldDuration) {
+                    this.waitingForAnswer = false;
+                    this.checkAnswer(count);
+                }
+            }
+
+            checkAnswer(answer) {
+                const q = this.questions[this.currentQuestionIndex];
+                if (answer === q.answer) {
+                    console.log('✅ Đúng!');
+                    this.correctAnswers++;
+                    this.correctCount.textContent = this.correctAnswers;
+                    this.showFeedback('🎉 Đúng rồi!', true);
+                    this.playSound(true);
+                } else {
+                    console.log('❌ Sai!');
+                    this.wrongAnswers++;
+                    this.wrongCount.textContent = this.wrongAnswers;
+                    this.showFeedback('❌ Sai rồi!', false);
+                    this.playSound(false);
+                }
+                setTimeout(() => this.nextQuestion(), 2000);
+            }
+
+            updateProgressBar() {
+                const progress = ((this.currentQuestionIndex + 1) / this.totalQuestions) * 100;
+                this.progressBar.style.width = progress + '%';
+            }
+
+            showFeedback(msg, correct) {
+                this.feedbackMessage.textContent = msg;
+                this.feedbackMessage.style.background = correct ? 'rgba(168,230,207,.95)' : 'rgba(255,171,171,.95)';
+                this.feedbackMessage.classList.add('show');
+                setTimeout(() => { this.feedbackMessage.classList.remove('show'); }, 2000);
+            }
+
+            updateLevelBadge() {
+                const levelNames = { 1: '🟢 Dễ', 2: '🟡 Trung Bình', 3: '🔴 Khó' };
+                this.levelBadge.textContent = `Level ${this.level} - ${levelNames[this.level]}`;
+            }
+
+            startTimer() {
+                this.timerInterval = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    this.timer.textContent = `⏱️ ${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+                }, 1000);
+            }
+
+            playSound(isCorrect) {
+                try {
+                    if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    if (isCorrect) {
+                        oscillator.frequency.setValueAtTime(523.25, this.audioContext.currentTime);
+                        oscillator.frequency.setValueAtTime(659.25, this.audioContext.currentTime + 0.1);
+                        oscillator.frequency.setValueAtTime(783.99, this.audioContext.currentTime + 0.2);
+                    } else {
+                        oscillator.frequency.setValueAtTime(392, this.audioContext.currentTime);
+                        oscillator.frequency.setValueAtTime(349.23, this.audioContext.currentTime + 0.1);
+                    }
+                    gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.3);
+                } catch (e) { console.log('Không thể phát âm thanh:', e); }
+            }
+
+            async endGame() {
+                console.log('🏁 Kết thúc game!');
+                clearInterval(this.timerInterval);
+                const totalTime = Math.floor((Date.now() - this.startTime) / 1000);
+                const score = Math.round((this.correctAnswers / this.totalQuestions) * 100);
+                document.getElementById('finalScore').textContent = score + '%';
+                document.getElementById('finalTime').textContent = totalTime + 's';
+                document.getElementById('finalCorrect').textContent = this.correctAnswers;
+                document.getElementById('finalWrong').textContent = this.wrongAnswers;
+                const stars = Math.max(1, Math.ceil((score / 100) * 5));
+                document.getElementById('starRating').textContent = '⭐'.repeat(stars);
+                await this.saveResult(score, totalTime, this.correctAnswers, this.wrongAnswers);
+                this.resultModal.style.display = 'flex';
+            }
+
+            async saveResult(score, time) {
+                try {
+                    console.log('💾 Đang lưu kết quả...');
+                    await db.collection('gameHistory').add({
+                        userId: this.userId, level: this.level, score, timeSpent: time,
+                        correctAnswers: this.correctAnswers, wrongAnswers: this.wrongAnswers,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        timestampClient: new Date()
+                    });
+                    const userRef = db.collection('users').doc(this.userId);
+                    const userDoc = await userRef.get();
+                    if (userDoc.exists) {
+                        const field = `level${this.level}HighScore`;
+                        const currentHigh = userDoc.data()[field] || 0;
+                        if (score > currentHigh) {
+                            await userRef.update({ [field]: score });
+                            console.log('🏆 High score mới!');
+                        }
+                    }
+                    console.log('✅ Kết quả đã lưu thành công');
+                } catch (error) { console.error('❌ Lỗi lưu kết quả:', error); }
+            }
+
+            setupEventListeners() {
+                document.getElementById('btnExit').addEventListener('click', () => {
+                    if (confirm('Bạn có muốn thoát? Kết quả sẽ không được lưu.')) {
+                        this.cleanup();
+                        window.location.href = 'dashboard.html';
+                    }
+                });
+                document.getElementById('btnSkip').addEventListener('click', () => {
+                    if (this.waitingForAnswer) {
+                        console.log('⏭️ Bỏ qua câu hỏi');
+                        this.wrongAnswers++;
+                        this.wrongCount.textContent = this.wrongAnswers;
+                        this.showFeedback('⏭️ Đã bỏ qua', false);
+                        this.playSound(false);
+                        this.resetGestureState();
+                        setTimeout(() => this.nextQuestion(), 1000);
+                    }
+                });
+                document.getElementById('btnHint').addEventListener('click', () => {
+                    const question = this.questions[this.currentQuestionIndex];
+                    alert(`💡 Gợi ý: Giơ ${question.answer} ngón tay lên!`);
+                });
+                document.getElementById('finishBtn').addEventListener('click', () => {
+                    if (confirm('Bạn muốn kết thúc bài làm và lưu kết quả?')) {
+                        console.log('✅ Hoàn thành thủ công');
+                        this.endGame();
+                    }
+                });
+                document.getElementById('btnPlayAgain').addEventListener('click', () => {
+                    this.resultModal.style.display = 'none';
+                    this.generateQuestions();
+                    this.startGame();
+                });
+                document.getElementById('btnBackToDashboard').addEventListener('click', () => {
+                    console.log('🏠 Quay về dashboard');
+                    this.cleanup();
+                    window.location.href = 'dashboard.html';
+                });
+            }
+
+            cleanup() {
+                console.log('🧹 Dọn dẹp resources...');
+                this.isExiting = true;
+                if (this.gestureRecognition) {
+                    this.gestureRecognition.destroy();
+                    this.gestureRecognition = null;
+                }
+                if (this.videoElement && this.videoElement.srcObject) {
+                    this.videoElement.srcObject.getTracks().forEach(track => track.stop());
+                    this.videoElement.srcObject = null;
+                }
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('📄 DOM đã sẵn sàng');
+            const game = new MathGame();
+            await game.init();
+        });
+    </script>
+</body>
+</html>

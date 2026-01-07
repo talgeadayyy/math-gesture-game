@@ -1,0 +1,38 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.result-container {
+  background: #1e293b;
+  padding: 30px;
+  border-radius: 12px;
+  width: 320px;
+  text-align: center;
+}
+
+.score {
+  font-size: 64px;
+  color: #22c55e;
+}
+
+.stars {
+  font-size: 32px;
+  margin: 10px 0;
+}
+
+.stats p {
+  margin: 6px 0;
+}
+
+.actions button {
+  margin: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+}
