@@ -217,6 +217,34 @@
     <script src="js/firebase.js"></script>
 
     <script>
+        // ===== SOUND EFFECTS =====
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        function playSound(type) {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            
+            if (type === 'click') {
+                oscillator.frequency.setValueAtTime(800, now);
+                gainNode.gain.setValueAtTime(0.2, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                oscillator.start(now);
+                oscillator.stop(now + 0.1);
+            } else if (type === 'select') {
+                oscillator.frequency.setValueAtTime(600, now);
+                gainNode.gain.setValueAtTime(0.15, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                oscillator.start(now);
+                oscillator.stop(now + 0.15);
+            }
+        }
+
         function waitForFirebase(callback) {
             if (typeof firebase !== 'undefined' && firebase.auth && firebase.firestore) {
                 callback();
@@ -239,6 +267,7 @@
 
             document.querySelectorAll('.option-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
+                    playSound('select'); // 🔊 ÂM THANH CHỌN
                     const group = this.parentElement;
                     group.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
@@ -253,6 +282,7 @@
             });
 
             window.startGame = function() {
+                playSound('click'); // 🔊 ÂM THANH NÚT
                 const questions = document.getElementById('questionCount').value;
                 if (questions < 1 || questions > 15) {
                     alert('Số câu hỏi phải từ 1 đến 15!');
@@ -263,10 +293,12 @@
             };
 
             window.goToHistory = function() {
+                playSound('click'); // 🔊 ÂM THANH NÚT
                 window.location.href = 'history.html';
             };
 
             window.logout = function() {
+                playSound('click'); // 🔊 ÂM THANH NÚT
                 firebase.auth().signOut().then(() => {
                     window.location.href = 'login.html';
                 });
