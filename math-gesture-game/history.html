@@ -145,7 +145,7 @@
             padding: 25px;
             margin-bottom: 25px;
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 20px;
             box-shadow: 0 10px 30px rgba(86,204,242,0.3);
             border: 6px solid rgba(255,255,255,0.9);
@@ -345,6 +345,38 @@
             margin-top: 5px;
         }
 
+        .card-details {
+            background: #f0f4f8;
+            padding: 15px;
+            border-radius: 15px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-around;
+            font-size: 14px;
+            font-weight: 700;
+            color: #555;
+        }
+
+        .detail-item {
+            text-align: center;
+        }
+
+        .detail-item span {
+            display: block;
+            font-family: 'Baloo 2', sans-serif;
+            font-size: 18px;
+            color: #4D96FF;
+            margin-top: 5px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            font-size: 20px;
+            color: #666;
+            font-weight: 700;
+        }
+
         @media (max-width: 768px) {
             .stats-summary { grid-template-columns: 1fr 1fr; }
             .history-filters { grid-template-columns: 1fr; }
@@ -388,12 +420,19 @@
 
         <div class="history-filters">
             <div class="filter-group">
-                <label>Lọc theo Level:</label>
-                <select id="filterLevel">
+                <label>Lọc theo phép tính:</label>
+                <select id="filterOperation">
                     <option value="all">Tất cả</option>
-                    <option value="1">Level 1 - Dễ</option>
-                    <option value="2">Level 2 - Trung Bình</option>
-                    <option value="3">Level 3 - Khó</option>
+                    <option value="add">Phép cộng (+)</option>
+                    <option value="subtract">Phép trừ (-)</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Lọc theo khoảng:</label>
+                <select id="filterRange">
+                    <option value="all">Tất cả</option>
+                    <option value="0-5">Khoảng 0-5</option>
+                    <option value="5-10">Khoảng 5-10</option>
                 </select>
             </div>
             <div class="filter-group">
@@ -429,13 +468,21 @@
         </div>
     </div>
 
-    <!-- ✅ LOGIC GIỮ NGUYÊN 100% -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="js/firebase.js"></script>
 
     <script>
+        function waitForFirebase(callback) {
+            if (typeof firebase !== 'undefined' && firebase.auth && firebase.firestore && window.auth && window.db) {
+                callback();
+            } else {
+                setTimeout(() => waitForFirebase(callback), 100);
+            }
+        }
+
+        waitForFirebase(() => {
         const auth = window.auth;
         const db = window.db;
         let allHistory = [];
@@ -505,12 +552,18 @@
         }
 
         function renderHistory() {
-            const filterLevel = document.getElementById('filterLevel').value;
+            const filterOperation = document.getElementById('filterOperation').value;
+            const filterRange = document.getElementById('filterRange').value;
             const sortBy = document.getElementById('sortBy').value;
 
             let filtered = allHistory;
-            if (filterLevel !== 'all') {
-                filtered = allHistory.filter(item => item.level === parseInt(filterLevel));
+            
+            if (filterOperation !== 'all') {
+                filtered = filtered.filter(item => item.operation === filterOperation);
+            }
+            
+            if (filterRange !== 'all') {
+                filtered = filtered.filter(item => item.range === filterRange);
             }
 
             filtered.sort((a, b) => {
@@ -541,13 +594,18 @@
             const card = document.createElement('div');
             card.className = 'history-card';
 
-            const levelNames = {
-                1: { name: 'Dễ', emoji: '🟢', color: '#84fab0' },
-                2: { name: 'Trung Bình', emoji: '🟡', color: '#fcb69f' },
-                3: { name: 'Khó', emoji: '🔴', color: '#ff9a9e' }
+            const operationInfo = {
+                'add': { name: 'Phép Cộng', emoji: '➕', color: '#84fab0' },
+                'subtract': { name: 'Phép Trừ', emoji: '➖', color: '#fcb69f' }
             };
 
-            const levelInfo = levelNames[item.level] || { name: 'Unknown', emoji: '❓', color: '#ccc' };
+            const rangeInfo = {
+                '0-5': { name: 'Khoảng 0-5', emoji: '🟢' },
+                '5-10': { name: 'Khoảng 5-10', emoji: '🔵' }
+            };
+
+            const opInfo = operationInfo[item.operation] || { name: 'Unknown', emoji: '❓', color: '#ccc' };
+            const rgInfo = rangeInfo[item.range] || { name: 'Unknown', emoji: '❓' };
             const scoreColor = item.score >= 80 ? '#38ef7d' : item.score >= 50 ? '#f7b731' : '#ff6b6b';
 
             const date = new Date(item.timestamp);
@@ -557,32 +615,54 @@
             const minutes = Math.floor(item.timeSpent / 60);
             const seconds = item.timeSpent % 60;
 
+            const totalAnswered = (item.correctAnswers || 0) + (item.wrongAnswers || 0);
+            const scorePercent = totalAnswered > 0 ? Math.round((item.correctAnswers / totalAnswered) * 100) : 0;
+
+            const starCount = scorePercent >= 90 ? 3 : scorePercent >= 70 ? 2 : scorePercent >= 50 ? 1 : 0;
+            const stars = '⭐'.repeat(starCount) + '☆'.repeat(3 - starCount);
+
             card.innerHTML = `
-                <div class="card-header" style="background: linear-gradient(135deg, ${levelInfo.color} 0%, ${levelInfo.color}dd 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, ${opInfo.color} 0%, ${opInfo.color}dd 100%);">
                     <div>#${index}</div>
-                    <div>${levelInfo.emoji} Level ${item.level} - ${levelInfo.name}</div>
+                    <div>${opInfo.emoji} ${opInfo.name} | ${rgInfo.emoji} ${rgInfo.name}</div>
                     <div>${dateStr} ${timeStr}</div>
                 </div>
                 <div class="card-body">
                     <div class="card-score" style="color: ${scoreColor};">
-                        <div class="score-big">${item.score}%</div>
-                        <div class="score-label">Điểm số</div>
+                        <div class="score-big">${scorePercent}%</div>
+                        <div class="score-label">${stars}</div>
                     </div>
-                    <div class="card-stats">
-                        <div class="stat">
-                            <div class="stat-icon">✅</div>
-                            <div class="stat-value">${item.correctAnswers || 0}</div>
-                            <div class="stat-label">Đúng</div>
+                    <div>
+                        <div class="card-stats">
+                            <div class="stat">
+                                <div class="stat-icon">✅</div>
+                                <div class="stat-value">${item.correctAnswers || 0}</div>
+                                <div class="stat-label">Đúng</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-icon">❌</div>
+                                <div class="stat-value">${item.wrongAnswers || 0}</div>
+                                <div class="stat-label">Sai</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-icon">⏱️</div>
+                                <div class="stat-value">${minutes}:${String(seconds).padStart(2, '0')}</div>
+                                <div class="stat-label">Thời gian</div>
+                            </div>
                         </div>
-                        <div class="stat">
-                            <div class="stat-icon">❌</div>
-                            <div class="stat-value">${item.wrongAnswers || 0}</div>
-                            <div class="stat-label">Sai</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-icon">⏱️</div>
-                            <div class="stat-value">${minutes}:${String(seconds).padStart(2, '0')}</div>
-                            <div class="stat-label">Thời gian</div>
+                        <div class="card-details">
+                            <div class="detail-item">
+                                📝 Số câu hỏi
+                                <span>${item.questions || 10}</span>
+                            </div>
+                            <div class="detail-item">
+                                ${opInfo.emoji} Phép tính
+                                <span>${opInfo.name}</span>
+                            </div>
+                            <div class="detail-item">
+                                ${rgInfo.emoji} Khoảng
+                                <span>${rgInfo.name}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -591,7 +671,8 @@
             return card;
         }
 
-        document.getElementById('filterLevel').addEventListener('change', renderHistory);
+        document.getElementById('filterOperation').addEventListener('change', renderHistory);
+        document.getElementById('filterRange').addEventListener('change', renderHistory);
         document.getElementById('sortBy').addEventListener('change', renderHistory);
 
         document.getElementById('btnBack').addEventListener('click', () => {
@@ -615,6 +696,7 @@
                 alert('Không thể xóa lịch sử. Vui lòng thử lại.');
             }
         });
+        }); // ✅ KẾT THÚC waitForFirebase()
     </script>
 </body>
 </html>
