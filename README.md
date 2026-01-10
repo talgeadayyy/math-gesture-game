@@ -21,4 +21,4 @@ Game học toán sử dụng nhận diện cử chỉ tay bằng camera.
 - Thống kê điểm
 
 ## Demo
-https://drive.google.com/file/d/1n5__j4eNoK0u8vP_YmZ8tnRZOfxDz57U/view?usp=drive_link
+https://drive.google.com/file/d/1xfV9w1oIJSd8sl2n_HBtjPphkKmW0rsj/view?usp=sharing
