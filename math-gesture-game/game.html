@@ -332,7 +332,6 @@
         }
 
         function playSound(type) {
-            // ✅ Khởi tạo audio khi user click lần đầu
             initAudio();
             
             if (audioCtx.state === 'suspended') {
@@ -421,6 +420,7 @@
             const STABLE_DURATION = 1500;
             let isWaitingForHand = true;
             let lastDetectedFingers = 0;
+            let handDetected = false;
 
             function generateQuestions() {
                 questions = [];
@@ -465,6 +465,7 @@
                 isWaitingForHand = true;
                 stableCount = 0;
                 stableStartTime = 0;
+                handDetected = false;
                 console.log('🔄 Câu mới - Chờ tay giơ lên...');
             }
 
@@ -477,6 +478,7 @@
                     feedback.textContent = '🎉 Chính xác!';
                     feedback.className = 'correct';
                     correctAnswers++;
+                    console.log('✅ Đúng! Chờ 2s...');
                     
                     setTimeout(() => {
                         currentQuestion++;
@@ -487,6 +489,7 @@
                     feedback.textContent = `❌ Sai rồi! Đáp án: ${q.answer}`;
                     feedback.className = 'wrong';
                     wrongAnswers++;
+                    console.log('❌ Sai! Chờ 2s...');
                     
                     setTimeout(() => {
                         currentQuestion++;
@@ -499,14 +502,17 @@
                 document.getElementById('fingerCount').textContent = count;
                 lastDetectedFingers = count;
 
+                if (!handDetected) {
+                    handDetected = true;
+                    console.log('👋 Phát hiện bàn tay');
+                }
+
                 if (isWaitingForHand) {
-                    if (count > 0) {
-                        console.log('👋 Bắt đầu giơ tay - Số ngón:', count);
-                        isWaitingForHand = false;
-                        stableTarget = count;
-                        stableCount = 0;
-                        stableStartTime = Date.now();
-                    }
+                    console.log('👋 Bắt đầu giơ tay - Số ngón:', count);
+                    isWaitingForHand = false;
+                    stableTarget = count;
+                    stableCount = 0;
+                    stableStartTime = Date.now();
                     return;
                 }
 
@@ -518,12 +524,10 @@
                         checkAnswer(count);
                     }
                 } else {
-                    if (count > 0) {
-                        console.log(`🔄 Đổi từ ${stableTarget} → ${count}, reset timer`);
-                        stableTarget = count;
-                        stableStartTime = Date.now();
-                        stableCount = 0;
-                    }
+                    console.log(`🔄 Đổi từ ${stableTarget} → ${count}, reset timer`);
+                    stableTarget = count;
+                    stableStartTime = Date.now();
+                    stableCount = 0;
                 }
             }
 
@@ -535,12 +539,12 @@
             };
 
             window.showHint = function() {
-                playSound('click');
+                playSound('click'); // 🔊 ÂM THANH NÚT
                 const q = questions[currentQuestion];
                 
                 let hint = '';
                 if (q.answer === 0) {
-                    hint = '💡 Gợi ý: Thu tất cả ngón tay lại (nắm tay) hoặc không giơ tay lên!';
+                    hint = '💡 Gợi ý: Nắm chặt tay lại (4 ngón gập xuống) và giữ 1.5 giây!';
                 } else if (q.answer === 1) {
                     hint = '💡 Gợi ý: Giơ 1 ngón trỏ lên!';
                 } else if (q.answer === 2) {
@@ -551,6 +555,8 @@
                     hint = '💡 Gợi ý: Giơ 4 ngón (không bao gồm ngón cái)!';
                 } else if (q.answer === 5) {
                     hint = '💡 Gợi ý: Giơ cả 5 ngón tay lên!';
+                } else if (q.answer <= 10) {
+                    hint = `💡 Gợi ý: Giơ ${q.answer} ngón tay (có thể dùng 2 tay)!`;
                 } else {
                     hint = `💡 Gợi ý: Đáp án nằm trong khoảng ${q.answer - 1} đến ${q.answer + 1}`;
                 }
@@ -618,8 +624,7 @@
                     generateQuestions();
                     displayQuestion();
                     
-                    // ✅ Khởi tạo audio ngay khi load
-                    initAudio();
+                    playSound('start'); // 🔊 ÂM THANH BẮT ĐẦU
 
                     const video = document.getElementById('videoElement');
                     const canvas = document.getElementById('canvasElement');
@@ -634,7 +639,6 @@
                             
                             console.log('🎥 Video ready:', video.videoWidth, 'x', video.videoHeight);
                             
-                            // ✅ KIỂM TRA GestureRecognition class
                             if (typeof GestureRecognition === 'undefined') {
                                 console.error('❌ GestureRecognition class không tồn tại!');
                                 alert('Lỗi: File js/gesture.js chưa load. Vui lòng refresh trang.');
