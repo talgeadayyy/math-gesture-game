@@ -321,10 +321,24 @@
 
     <script>
         // ===== SOUND EFFECTS =====
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioCtx = new AudioContext();
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+                console.log('🔊 Audio initialized');
+            }
+        }
 
         function playSound(type) {
+            // ✅ Khởi tạo audio khi user click lần đầu
+            initAudio();
+            
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            
             const oscillator = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
             
@@ -463,7 +477,6 @@
                     feedback.textContent = '🎉 Chính xác!';
                     feedback.className = 'correct';
                     correctAnswers++;
-                    console.log('✅ Đúng! Chờ 2s...');
                     
                     setTimeout(() => {
                         currentQuestion++;
@@ -474,7 +487,6 @@
                     feedback.textContent = `❌ Sai rồi! Đáp án: ${q.answer}`;
                     feedback.className = 'wrong';
                     wrongAnswers++;
-                    console.log('❌ Sai! Chờ 2s...');
                     
                     setTimeout(() => {
                         currentQuestion++;
@@ -523,9 +535,27 @@
             };
 
             window.showHint = function() {
-                playSound('click'); // 🔊 ÂM THANH NÚT
+                playSound('click');
                 const q = questions[currentQuestion];
-                alert(`💡 Gợi ý: Đáp án từ ${q.answer - 1} đến ${q.answer + 1}`);
+                
+                let hint = '';
+                if (q.answer === 0) {
+                    hint = '💡 Gợi ý: Thu tất cả ngón tay lại (nắm tay) hoặc không giơ tay lên!';
+                } else if (q.answer === 1) {
+                    hint = '💡 Gợi ý: Giơ 1 ngón trỏ lên!';
+                } else if (q.answer === 2) {
+                    hint = '💡 Gợi ý: Giơ 2 ngón (trỏ + giữa) hoặc hình chữ V!';
+                } else if (q.answer === 3) {
+                    hint = '💡 Gợi ý: Giơ 3 ngón (trỏ + giữa + áp út)!';
+                } else if (q.answer === 4) {
+                    hint = '💡 Gợi ý: Giơ 4 ngón (không bao gồm ngón cái)!';
+                } else if (q.answer === 5) {
+                    hint = '💡 Gợi ý: Giơ cả 5 ngón tay lên!';
+                } else {
+                    hint = `💡 Gợi ý: Đáp án nằm trong khoảng ${q.answer - 1} đến ${q.answer + 1}`;
+                }
+                
+                alert(hint);
             };
 
             window.finishGame = function() {
@@ -587,7 +617,9 @@
 
                     generateQuestions();
                     displayQuestion();
-                    playSound('start'); // 🔊 ÂM THANH BẮT ĐẦU GAME
+                    
+                    // ✅ Khởi tạo audio ngay khi load
+                    initAudio();
 
                     const video = document.getElementById('videoElement');
                     const canvas = document.getElementById('canvasElement');
